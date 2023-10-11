@@ -65,10 +65,6 @@ class Category(models.Model):
 
 
 class Page(models.Model):
-    class Meta:
-        verbose_name = 'Page'
-        verbose_name_plural = 'Pages'
-
     title = models.CharField(max_length=65)
     slug = models.SlugField(
         unique=True, default="",
@@ -82,6 +78,11 @@ class Page(models.Model):
         ),
     )
     content = models.TextField()
+
+    def get_absolute_url(self):
+        if not self.is_published:
+            return reverse('blog:index')
+        return reverse('blog:page', args=(self.slug,))
 
     def save(self, *args, **kwargs):
         if not self.slug:
