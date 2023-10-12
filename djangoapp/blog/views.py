@@ -2,11 +2,10 @@ from typing import Any, Dict
 
 from blog.models import Page, Post, Tag
 from django.contrib.auth.models import User
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.http import Http404
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 from django.views.generic import DetailView, ListView
 
 PER_PAGE = 9
@@ -26,34 +25,6 @@ class PostListView(ListView):
         })
 
         return context
-
-
-def created_by(request, author_pk):
-    user = User.objects.filter(pk=author_pk).first()
-
-    if user is None:
-        raise Http404()
-
-    posts = Post.objects.get_published()\
-        .filter(created_by__pk=author_pk)
-    user_full_name = user.username
-
-    if user.first_name:
-        user_full_name = f'{user.first_name} {user.last_name}'
-    page_title = f'Author: {user_full_name} - '
-
-    paginator = Paginator(posts, PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    return render(
-        request,
-        'blog/pages/index.html',
-        {
-            'page_obj': page_obj,
-            'page_title': page_title,
-        }
-    )
 
 
 class CreatedByListView(PostListView):
@@ -185,25 +156,21 @@ class PageDetailView(DetailView):
 
     def get_queryset(self) -> QuerySet[Any]:
         return super().get_queryset().filter(is_published=True)
+    
 
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'blog/pages/post.html'
+    context_object_name = 'post'
 
-def post(request, slug):
-    post_obj = (
-        Post.objects.get_published()
-        .filter(slug=slug)
-        .first()
-    )
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        post = self.get_object()
+        post_title = f'{post.title} - '  # type: ignore
+        ctx.update({
+            'page_title': post_title,
+        })
+        return ctx
 
-    if post_obj is None:
-        raise Http404()
-
-    page_title = f'Post: {post_obj.title} - '
-
-    return render(
-        request,
-        'blog/pages/post.html',
-        {
-            'post': post_obj,
-            'page_title': page_title,
-        }
-    )
+    def get_queryset(self) -> QuerySet[Any]:
+        return super().get_queryset().filter(is_published=True)
