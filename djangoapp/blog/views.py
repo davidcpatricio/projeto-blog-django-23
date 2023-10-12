@@ -1,6 +1,6 @@
 from typing import Any
 
-from blog.models import Page, Post
+from blog.models import Page, Post, Tag
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -116,27 +116,25 @@ class CategoryListView(PostListView):
         return ctx
 
 
-def category(request, slug):
-    posts = Post.objects.get_published()\
-        .filter(category__slug=slug)
+class TagListView(PostListView):
+    allow_empty = False
 
-    if len(posts) == 0:
-        raise Http404()
+    def get_queryset(self) -> QuerySet[Any]:
+        return super().get_queryset().filter(
+            tags__slug=self.kwargs.get('slug')
+        )
 
-    paginator = Paginator(posts, PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    page_title = f'Category: {page_obj[0].category.name} - '
-
-    return render(
-        request,
-        'blog/pages/index.html',
-        {
-            'page_obj': page_obj,
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        tag_slug = self.kwargs.get('slug')
+        tag = Tag.objects.get(slug=tag_slug)
+        page_title = (
+            f'Tag: {tag.name} - '  # type: ignore
+        )
+        ctx.update({
             'page_title': page_title,
-        }
-    )
+        })
+        return ctx
 
 
 def tag(request, slug):
